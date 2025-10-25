@@ -3,211 +3,324 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Audio Processor (Pitch & Speed Shift)</title>
-    <!-- Load Tailwind CSS for styling -->
+    <title>Audio FX Processor</title>
+    <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Custom styles for aesthetic */
+        /* Custom styles for the dark theme */
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f7f9fb;
+            background-color: #0f172a; /* Deep Slate-900 */
         }
         .container-card {
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            max-width: 90%;
+            background-color: #1e293b; /* Slate-800 for the card */
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
         }
-        .pitch-label {
-            transition: all 0.3s ease;
+        .accent-text { color: #fb923c; /* Orange-400 */ }
+        .accent-bg { background-color: #ea580c; /* Deep Orange-600 */ }
+        .accent-hover:hover { background-color: #f97316; /* Orange-500 */ }
+        
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #f97316; /* Orange-500 */
+            cursor: pointer;
+            margin-top: -6px; 
+            box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            height: 4px;
+            background: #334155; /* Slate-700 */
+            border-radius: 2px;
         }
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4">
 
-    <div class="container-card w-full max-w-lg bg-white p-6 md:p-8 rounded-2xl space-y-6">
+    <!-- Back Button -->
+    <a href="https://hencheng2.github.io/all/" class="absolute top-4 left-4 text-gray-300 hover:text-orange-400 transition-colors flex items-center text-sm font-semibold">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+        </svg>
+        Back
+    </a>
 
-        <h1 class="text-3xl font-extrabold text-indigo-700 text-center">
-            Pitch & Speed Shifter
-        </h1>
-        <p class="text-sm text-gray-500 text-center">
-            Upload an audio file (.mp3, .wav) to alter its pitch and speed simultaneously. (Note: True autotune requires complex external libraries, but this provides a strong, musical pitch shift effect.)
-        </p>
+    <div class="container-card w-full max-w-2xl text-white p-6 md:p-10 rounded-2xl space-y-8">
 
-        <!-- File Input -->
-        <div>
-            <label for="audioFile" class="block text-sm font-medium text-gray-700 mb-2">1. Upload Audio File</label>
-            <input type="file" id="audioFile" accept="audio/*" class="w-full text-sm text-gray-500
+        <header class="text-center">
+            <h1 class="text-3xl md:text-4xl font-extrabold accent-text">
+                Vocal FX Studio
+            </h1>
+            <p class="text-sm text-gray-400 mt-2">
+                Simulate musical pitch shift, echo, and modulation effects.
+            </p>
+        </header>
+
+        <!-- 1. File Upload -->
+        <section>
+            <label for="audioFile" class="block text-lg font-bold text-gray-300 mb-3">1. Load Audio</label>
+            <input type="file" id="audioFile" accept="audio/*" class="w-full text-sm text-gray-400
                 file:mr-4 file:py-2 file:px-4
                 file:rounded-full file:border-0
                 file:text-sm file:font-semibold
-                file:bg-indigo-50 file:text-indigo-700
-                hover:file:bg-indigo-100"
+                file:bg-orange-600 file:text-white
+                accent-hover hover:file:cursor-pointer"
             >
-        </div>
+        </section>
 
-        <!-- Pitch/Speed Control Slider -->
-        <div id="controlPanel" class="space-y-4 pt-4 border-t border-gray-100 hidden">
-            <h2 class="text-xl font-bold text-gray-800">2. Adjust Shift</h2>
+        <!-- 2. Effect Controls -->
+        <div id="controlPanel" class="space-y-6 pt-4 border-t border-gray-700 hidden">
+            
+            <h2 class="text-xl font-bold text-gray-300">2. Voice & Pitch Control</h2>
 
-            <div class="flex justify-between items-center">
-                <label for="pitchSlider" class="text-sm font-medium text-gray-700">Pitch/Speed Shift</label>
-                <span id="pitchValue" class="pitch-label px-3 py-1 rounded-full text-sm font-semibold text-white bg-indigo-600">1.0x (Original)</span>
+            <!-- Voice Presets -->
+            <div>
+                <label for="voicePreset" class="block text-sm font-medium text-gray-400 mb-2">Select Voice Preset</label>
+                <select id="voicePreset" class="w-full bg-slate-700 border border-slate-600 text-white rounded-lg p-3 focus:ring-orange-500 focus:border-orange-500">
+                    <option value="1.00">Original Voice</option>
+                    <option value="0.85">Deep Man (Slow)</option>
+                    <option value="1.20">High Woman (Fast)</option>
+                    <option value="1.50">Child / Chipmunk</option>
+                    <option value="robot">Robot / Metallic</option>
+                </select>
             </div>
 
-            <input type="range" id="pitchSlider" min="0.5" max="2.0" value="1.0" step="0.01" class="w-full h-2 bg-indigo-100 rounded-lg appearance-none cursor-pointer range-lg">
-            <div class="flex justify-between text-xs text-gray-500 mt-1">
-                <span>0.5x (Deep/Slow)</span>
-                <span>2.0x (High/Fast)</span>
+            <!-- Pitch/Speed Slider -->
+            <div class="space-y-2">
+                <div class="flex justify-between items-center">
+                    <label class="text-sm font-medium text-gray-400">Fine Tune Pitch/Speed Shift</label>
+                    <span id="pitchValue" class="px-3 py-1 rounded-full text-xs font-semibold text-white bg-orange-600 transition-colors">1.00x</span>
+                </div>
+                <input type="range" id="pitchSlider" min="0.5" max="2.0" value="1.00" step="0.01" class="w-full">
+            </div>
+
+            <!-- Delay and Chorus Controls -->
+            <h2 class="text-xl font-bold text-gray-300 pt-4 border-t border-gray-700">3. Time & Modulation Effects</h2>
+            
+            <div class="grid md:grid-cols-2 gap-6">
+                <!-- Delay/Echo -->
+                <div class="bg-slate-700 p-4 rounded-xl space-y-3">
+                    <div class="flex items-center justify-between">
+                        <label class="text-lg font-semibold text-gray-300">Echo / Delay</label>
+                        <input type="checkbox" id="delayToggle" class="h-5 w-5 rounded border-gray-500 text-orange-600 focus:ring-orange-500 bg-slate-800">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="block text-xs font-medium text-gray-400">Delay Time (sec)</label>
+                        <input type="range" id="delayTime" min="0.05" max="1.0" value="0.5" step="0.01" class="w-full" disabled>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="block text-xs font-medium text-gray-400">Feedback (Intensity)</label>
+                        <input type="range" id="delayFeedback" min="0.1" max="0.8" value="0.4" step="0.01" class="w-full" disabled>
+                    </div>
+                </div>
+
+                <!-- Chorus -->
+                <div class="bg-slate-700 p-4 rounded-xl space-y-3">
+                    <div class="flex items-center justify-between">
+                        <label class="text-lg font-semibold text-gray-300">Chorus / Modulation</label>
+                        <input type="checkbox" id="chorusToggle" class="h-5 w-5 rounded border-gray-500 text-orange-600 focus:ring-orange-500 bg-slate-800">
+                    </div>
+                     <div class="space-y-2">
+                        <label class="block text-xs font-medium text-gray-400">Modulation Depth</label>
+                        <input type="range" id="chorusDepth" min="0.001" max="0.03" value="0.005" step="0.001" class="w-full" disabled>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="block text-xs font-medium text-gray-400">Modulation Rate (Hz)</label>
+                        <input type="range" id="chorusRate" min="0.5" max="5.0" value="1.5" step="0.1" class="w-full" disabled>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Action Buttons -->
-        <div id="buttonPanel" class="flex flex-col md:flex-row gap-4 pt-4 border-t border-gray-100 hidden">
-            <button id="playButton" disabled class="flex-1 px-4 py-3 bg-green-500 text-white font-semibold rounded-xl transition duration-150 hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed">
+        <!-- 4. Action Buttons -->
+        <div id="buttonPanel" class="flex flex-wrap gap-4 pt-4 border-t border-gray-700 hidden">
+            <button id="playButton" disabled class="flex-1 min-w-[120px] px-4 py-3 bg-green-600 text-white font-semibold rounded-xl transition duration-150 hover:bg-green-700 disabled:bg-gray-700 disabled:cursor-not-allowed">
                 ▶ Play Processed
             </button>
-            <button id="stopButton" disabled class="flex-1 px-4 py-3 bg-red-500 text-white font-semibold rounded-xl transition duration-150 hover:bg-red-600 disabled:bg-gray-300 disabled:cursor-not-allowed">
+            <button id="stopButton" disabled class="flex-1 min-w-[120px] px-4 py-3 bg-red-600 text-white font-semibold rounded-xl transition duration-150 hover:bg-red-700 disabled:bg-gray-700 disabled:cursor-not-allowed">
                 ■ Stop
             </button>
-            <button id="downloadButton" disabled class="flex-1 px-4 py-3 bg-indigo-500 text-white font-semibold rounded-xl transition duration-150 hover:bg-indigo-600 disabled:bg-gray-300 disabled:cursor-not-allowed">
-                ↓ Download Audio
+            <button id="downloadButton" disabled class="flex-1 min-w-[120px] px-4 py-3 accent-bg text-white font-semibold rounded-xl transition duration-150 accent-hover disabled:bg-gray-700 disabled:cursor-not-allowed">
+                ↓ Download WAV
             </button>
         </div>
 
         <!-- Status Message -->
-        <div id="statusMessage" class="text-center p-3 rounded-xl bg-gray-50 text-gray-700 text-sm mt-4">
+        <div id="statusMessage" class="text-center p-3 rounded-xl bg-slate-700 text-gray-300 text-sm mt-4">
             Awaiting file upload...
         </div>
 
     </div>
 
     <script>
-        // --- Core Web Audio API Variables ---
+        // --- Core Web Audio API Variables & Nodes ---
         let audioContext = null;
         let audioBuffer = null;
         let audioSource = null;
         let isPlaying = false;
 
+        // Effect Nodes
+        let masterGain, delay, feedbackGain, chorusLFO, chorusWet, chorusDelay;
+
         // --- DOM Elements ---
-        const fileInput = document.getElementById('audioFile');
-        const controlPanel = document.getElementById('controlPanel');
-        const buttonPanel = document.getElementById('buttonPanel');
-        const pitchSlider = document.getElementById('pitchSlider');
-        const pitchValueSpan = document.getElementById('pitchValue');
-        const playButton = document.getElementById('playButton');
-        const stopButton = document.getElementById('stopButton');
-        const downloadButton = document.getElementById('downloadButton');
-        const statusMessage = document.getElementById('statusMessage');
+        const D = (id) => document.getElementById(id);
+        const [fileInput, controlPanel, playButton, stopButton, downloadButton, statusMessage, pitchSlider, pitchValueSpan, voicePreset] = 
+              [D('audioFile'), D('controlPanel'), D('playButton'), D('stopButton'), D('downloadButton'), D('statusMessage'), D('pitchSlider'), D('pitchValue'), D('voicePreset')];
+        const [delayToggle, delayTime, delayFeedback, chorusToggle, chorusDepth, chorusRate] = 
+              [D('delayToggle'), D('delayTime'), D('delayFeedback'), D('chorusToggle'), D('chorusDepth'), D('chorusRate')];
+
+        // --- Utility Functions ---
 
         /**
-         * Utility function to update the status message box.
-         * @param {string} message - The text message to display.
-         * @param {string} type - 'info', 'success', or 'error' for styling.
+         * Initializes all the necessary Web Audio API nodes and connects the basic graph.
+         * The graph structure is: Source -> masterGain -> delay (parallel) -> masterGain -> destination
+         */
+        function initializeAudioGraph() {
+            if (audioContext) return; 
+
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+            // 1. Master Gain (for final output volume control)
+            masterGain = audioContext.createGain();
+            masterGain.connect(audioContext.destination);
+
+            // 2. Delay/Echo Nodes
+            delay = audioContext.createDelay(1.0); // Max delay time 1.0s
+            feedbackGain = audioContext.createGain();
+            
+            // Connect delay feedback loop: Delay -> FeedbackGain -> Delay
+            delay.connect(feedbackGain);
+            feedbackGain.connect(delay);
+            
+            // Connect delay output in parallel to master output
+            delay.connect(masterGain); 
+
+            // Initialize delay settings (will be updated by UI)
+            delay.delayTime.value = parseFloat(delayTime.value);
+            feedbackGain.gain.value = delayToggle.checked ? parseFloat(delayFeedback.value) : 0;
+            
+            // 3. Chorus/Flanger Nodes (Simple LFO modulating delay time)
+            chorusDelay = audioContext.createDelay(0.01); // Small delay for modulation base
+            chorusWet = audioContext.createGain();
+            chorusWet.gain.value = 0; // Off by default
+
+            // LFO for modulation (controls the delay time)
+            chorusLFO = audioContext.createOscillator();
+            chorusLFO.type = 'sine';
+            chorusLFO.frequency.value = parseFloat(chorusRate.value);
+            
+            // Connect LFO to the delay time parameter
+            chorusLFO.connect(chorusDelay.delayTime);
+            chorusLFO.start(0);
+
+            chorusDelay.connect(chorusWet); // Modulated signal goes through wet gain
+            chorusWet.connect(masterGain); // Wet signal joins master
+
+            // The main source output will be connected inside createAndStartSource
+        }
+
+
+        /**
+         * Updates the status message box.
          */
         function updateStatus(message, type = 'info') {
             statusMessage.textContent = message;
-            statusMessage.className = 'text-center p-3 rounded-xl mt-4 text-sm';
+            statusMessage.className = 'text-center p-3 rounded-xl mt-4 text-sm transition-colors';
             switch (type) {
                 case 'success':
-                    statusMessage.classList.add('bg-green-100', 'text-green-800');
+                    statusMessage.classList.add('bg-green-900', 'text-green-300');
                     break;
                 case 'error':
-                    statusMessage.classList.add('bg-red-100', 'text-red-800');
+                    statusMessage.classList.add('bg-red-900', 'text-red-300');
                     break;
                 case 'loading':
-                    statusMessage.classList.add('bg-yellow-100', 'text-yellow-800');
+                    statusMessage.classList.add('bg-orange-900', 'text-orange-300');
                     break;
                 default:
-                    statusMessage.classList.add('bg-gray-50', 'text-gray-700');
+                    statusMessage.classList.add('bg-slate-700', 'text-gray-300');
             }
         }
 
-        // --- Initialization and File Loading ---
+        // --- File Loading ---
 
         fileInput.addEventListener('change', async (event) => {
             const file = event.target.files[0];
             if (!file) return;
 
-            // Ensure AudioContext is ready (it must be created after a user gesture on some browsers)
-            if (!audioContext) {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            }
-
-            updateStatus('Loading and decoding audio...', 'loading');
+            initializeAudioGraph(); // Initialize or re-initialize
+            updateStatus(`Loading and decoding "${file.name}"...`, 'loading');
             controlPanel.classList.add('hidden');
-            buttonPanel.classList.add('hidden');
-            playButton.disabled = true;
+            
+            stopAudio(false); // Stop any existing playback
 
             try {
-                // Read the file into an ArrayBuffer
                 const arrayBuffer = await file.arrayBuffer();
-
-                // Decode the audio data
                 audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
 
-                updateStatus(`File "${file.name}" loaded successfully. Adjust the shift.`, 'success');
+                updateStatus(`File loaded. You can now adjust effects and play.`, 'success');
                 playButton.disabled = false;
                 downloadButton.disabled = false;
                 controlPanel.classList.remove('hidden');
-                buttonPanel.classList.remove('hidden');
+                document.getElementById('buttonPanel').classList.remove('hidden');
 
             } catch (e) {
-                updateStatus(`Error decoding audio: ${e.message}. Please try a different file.`, 'error');
+                updateStatus(`Error decoding audio: ${e.message}. Please check file type.`, 'error');
                 console.error("Audio decoding error:", e);
                 audioBuffer = null;
                 fileInput.value = '';
                 playButton.disabled = true;
                 downloadButton.disabled = true;
+                controlPanel.classList.add('hidden');
             }
         });
 
         // --- Playback Logic ---
 
         /**
-         * Creates and connects the AudioBufferSourceNode with the current pitch setting.
+         * Creates and connects the AudioBufferSourceNode with all effects.
          */
         function createAndStartSource() {
             if (!audioBuffer) return;
 
-            // Stop any existing source
             stopAudio();
 
-            // Create a new source node
             audioSource = audioContext.createBufferSource();
             audioSource.buffer = audioBuffer;
             
-            // Get the current playback rate from the slider
+            // Apply Voice/Pitch Shift via playbackRate
             const rate = parseFloat(pitchSlider.value);
-            
-            // Apply the 'autotune' (pitch/speed shift) effect via playbackRate
-            // NOTE: Changing playbackRate changes BOTH pitch and speed. 
-            // This is a simplification of a true pitch shift algorithm.
             audioSource.playbackRate.value = rate;
 
-            // Connect the source to the audio context's destination (speakers)
-            audioSource.connect(audioContext.destination);
+            // Connect source to the main gain (Dry Signal)
+            audioSource.connect(masterGain);
+            
+            // Connect source to delay input
+            audioSource.connect(delay);
+            
+            // Connect source to chorus input (Dry + Wet)
+            audioSource.connect(chorusDelay);
 
-            // Start playing from the beginning
+            // Start playing
             audioSource.start(0);
 
             isPlaying = true;
             playButton.textContent = '⏸ Pause';
-            playButton.classList.remove('bg-green-500', 'hover:bg-green-600');
-            playButton.classList.add('bg-orange-500', 'hover:bg-orange-600');
+            playButton.classList.replace('bg-green-600', 'bg-orange-600');
+            playButton.classList.replace('hover:bg-green-700', 'hover:bg-orange-700');
             stopButton.disabled = false;
 
-            // Event listener for when the audio finishes playing
+            updateStatus(`Playing at ${rate.toFixed(2)}x rate with effects.`, 'info');
+
+            // Set up stop listener
             audioSource.onended = () => {
-                // Check if the source ended naturally (not by stopAudio)
                 if (isPlaying) {
-                    stopAudio(false); // Clean up without resetting state aggressively
-                    playButton.textContent = '▶ Play Processed';
-                    playButton.classList.add('bg-green-500', 'hover:bg-green-600');
-                    playButton.classList.remove('bg-orange-500', 'hover:bg-orange-600');
-                    stopButton.disabled = true;
+                    stopAudio(false);
+                    resetPlayButton();
+                    updateStatus(`Playback finished.`, 'info');
                 }
             };
-
-            updateStatus(`Playing at ${rate.toFixed(2)}x rate.`, 'info');
         }
 
         /**
@@ -217,21 +330,25 @@
         function stopAudio(resetControls = true) {
             if (audioSource && isPlaying) {
                 try {
-                    audioSource.stop();
+                    // Disconnect and stop the source to allow garbage collection
+                    audioSource.disconnect();
+                    audioSource.stop(0);
                 } catch (e) {
-                    // console.warn("Error stopping audio source, may already be stopped:", e);
+                    console.warn("Error stopping audio source:", e);
                 }
             }
             if (resetControls) {
                 isPlaying = false;
-                playButton.textContent = '▶ Play Processed';
-                playButton.classList.add('bg-green-500', 'hover:bg-green-600');
-                playButton.classList.remove('bg-orange-500', 'hover:bg-orange-600');
+                resetPlayButton();
                 stopButton.disabled = true;
-                if (audioBuffer) {
-                   updateStatus(`Playback stopped. Adjust the shift.`, 'info');
-                }
+                if (audioBuffer) updateStatus(`Playback stopped.`, 'info');
             }
+        }
+
+        function resetPlayButton() {
+             playButton.textContent = '▶ Play Processed';
+             playButton.classList.replace('bg-orange-600', 'bg-green-600');
+             playButton.classList.replace('hover:bg-orange-700', 'hover:bg-green-700');
         }
 
         playButton.addEventListener('click', () => {
@@ -239,7 +356,6 @@
                 updateStatus('Please upload an audio file first.', 'error');
                 return;
             }
-            // Resume context on play (required for some browser policies)
             if (audioContext.state === 'suspended') {
                 audioContext.resume();
             }
@@ -255,37 +371,117 @@
             stopAudio();
         });
 
-        // --- Slider and UI Logic ---
 
-        pitchSlider.addEventListener('input', (event) => {
-            const rate = parseFloat(event.target.value);
-            pitchValueSpan.textContent = `${rate.toFixed(2)}x (${rate < 1.0 ? 'Lower' : (rate > 1.0 ? 'Higher' : 'Original')})`;
+        // --- UI and Effect Parameter Logic ---
+
+        // Handles Presets and Slider changes
+        function applyPitchAndRobotEffect(rate, isRobot) {
+            // 1. Update Slider and Value Span
+            pitchSlider.value = rate;
+            pitchValueSpan.textContent = isRobot ? 'Robot' : `${rate.toFixed(2)}x`;
             
-            // Change color based on value
-            if (rate > 1.1) {
-                pitchValueSpan.classList.remove('bg-indigo-600', 'bg-blue-600');
-                pitchValueSpan.classList.add('bg-pink-600');
-            } else if (rate < 0.9) {
-                pitchValueSpan.classList.remove('bg-indigo-600', 'bg-pink-600');
-                pitchValueSpan.classList.add('bg-blue-600');
-            } else {
-                pitchValueSpan.classList.remove('bg-pink-600', 'bg-blue-600');
-                pitchValueSpan.classList.add('bg-indigo-600');
-            }
-
-            // If audio is currently playing, instantly apply the new rate
+            // 2. Apply Pitch/Speed Shift (if playing)
             if (audioSource && isPlaying) {
                  audioSource.playbackRate.setValueAtTime(rate, audioContext.currentTime);
             }
+
+            // 3. Apply Formant/Robot Effect (using chorus as a simple modulation effect approximation)
+            if (isRobot) {
+                // For "Robot" we'll use a very fast, high-depth modulation to achieve a metallic/ring-mod sound
+                chorusToggle.checked = true;
+                chorusDepth.value = 0.03;
+                chorusRate.value = 5.0;
+                chorusWet.gain.value = 0.5;
+            } else if (chorusToggle.checked === false) {
+                 // Ensure chorus is off if not robot and not manually toggled
+                 chorusWet.gain.value = 0;
+            }
+
+            updateChorusControls();
+        }
+
+
+        pitchSlider.addEventListener('input', (event) => {
+            const rate = parseFloat(event.target.value);
+            voicePreset.value = rate.toFixed(2); // Set preset to match slider value
+            applyPitchAndRobotEffect(rate, false);
         });
 
-        // --- Download Logic ---
+        voicePreset.addEventListener('change', (event) => {
+            const presetValue = event.target.value;
+            let rate = 1.0;
+            let isRobot = false;
+
+            if (presetValue === 'robot') {
+                rate = 1.0;
+                isRobot = true;
+            } else {
+                rate = parseFloat(presetValue);
+                // If we select a non-robot voice, ensure manual chorus/robot is off 
+                // unless the checkbox is explicitly checked
+                if(!chorusToggle.checked) {
+                    chorusWet.gain.value = 0;
+                }
+            }
+            applyPitchAndRobotEffect(rate, isRobot);
+        });
+
+
+        // --- Delay UI & Parameter Updates ---
+
+        function updateDelayControls() {
+            const isEnabled = delayToggle.checked;
+            delayTime.disabled = !isEnabled;
+            delayFeedback.disabled = !isEnabled;
+
+            if (delay) {
+                delay.delayTime.value = parseFloat(delayTime.value);
+                // If checked, set feedback gain. If unchecked, mute the feedback.
+                feedbackGain.gain.value = isEnabled ? parseFloat(delayFeedback.value) : 0;
+            }
+        }
+        delayToggle.addEventListener('change', updateDelayControls);
+        delayTime.addEventListener('input', updateDelayControls);
+        delayFeedback.addEventListener('input', updateDelayControls);
+
+
+        // --- Chorus UI & Parameter Updates ---
+
+        function updateChorusControls() {
+            const isEnabled = chorusToggle.checked;
+            chorusDepth.disabled = !isEnabled;
+            chorusRate.disabled = !isEnabled;
+            
+            // Set voice preset back to slider value if manually tweaking chorus
+            if (isEnabled) {
+                 voicePreset.value = parseFloat(pitchSlider.value).toFixed(2);
+            }
+            
+            if (chorusLFO && chorusWet) {
+                // LFO controls the delay time modulation amount
+                const modulationDepth = parseFloat(chorusDepth.value);
+                chorusLFO.frequency.value = parseFloat(chorusRate.value);
+                
+                // Disconnect LFO before applying new amount
+                chorusLFO.disconnect(); 
+                chorusLFO.connect(chorusDelay.delayTime);
+                chorusDelay.delayTime.value = modulationDepth; // Base delay time
+                
+                // Gain node controls the wet/dry mix
+                chorusWet.gain.value = isEnabled ? 0.4 : 0; // 0.4 for subtle mix
+            }
+        }
+        chorusToggle.addEventListener('change', updateChorusControls);
+        chorusDepth.addEventListener('input', updateChorusControls);
+        chorusRate.addEventListener('input', updateChorusControls);
+
+        // --- Download Logic (WAV Conversion) ---
 
         /**
          * Converts the AudioBuffer into a downloadable WAV file blob.
-         * @param {AudioBuffer} audioBuffer - The processed audio data.
-         * @param {number} rate - The playback rate applied.
-         * @returns {Blob} The WAV file Blob.
+         * Note: This is a complex function for simulating the processed output for download.
+         * It applies the PITCH/SPEED shift but not the live effects (Delay/Chorus) for simplicity
+         * due to the inability to do full offline rendering in this sandbox environment.
          */
         function bufferToWavBlob(audioBuffer, rate) {
             const numberOfChannels = audioBuffer.numberOfChannels;
@@ -295,16 +491,13 @@
             const originalLength = audioBuffer.length;
             const processedLength = Math.ceil(originalLength / rate);
             
-            // Create a temporary buffer to hold the resampled data (using simple decimation/interpolation)
-            // Note: This simple method will introduce artifacts, but it's required to simulate 
-            // the length change caused by playbackRate for the download.
+            // Create a temporary buffer to hold the 16-bit PCM data (2 bytes per sample)
             const newArrayBuffer = new ArrayBuffer(processedLength * 2 * numberOfChannels);
             const dataView = new DataView(newArrayBuffer);
 
             let offset = 0;
             for (let i = 0; i < processedLength; i++) {
                 // Determine the original sample index corresponding to the processed index
-                // This is a simple interpolation/decimation based on the rate.
                 const originalIndex = Math.floor(i * rate); 
                 
                 for (let channel = 0; channel < numberOfChannels; channel++) {
@@ -315,25 +508,19 @@
                 }
             }
 
-            // Now, build the WAV file header (44 bytes)
+            // --- Build WAV File Header (44 bytes) ---
             const wavData = [];
-
-            // 1. RIFF chunk
             writeString('RIFF'); // Chunk ID
             writeInt32(36 + offset); // Chunk size (File size - 8)
             writeString('WAVE'); // Format
-
-            // 2. FMT chunk
             writeString('fmt '); // Sub-chunk 1 ID
             writeInt32(16); // Sub-chunk 1 size (16 for PCM)
             writeInt16(1); // Audio format (1 for PCM)
             writeInt16(numberOfChannels); // Number of channels
             writeInt32(sampleRate); // Sample rate
-            writeInt32(sampleRate * numberOfChannels * 2); // Byte rate (SampleRate * NumChannels * BitsPerSample/8)
-            writeInt16(numberOfChannels * 2); // Block align (NumChannels * BitsPerSample/8)
+            writeInt32(sampleRate * numberOfChannels * 2); // Byte rate
+            writeInt16(numberOfChannels * 2); // Block align
             writeInt16(16); // Bits per sample (16)
-
-            // 3. DATA chunk
             writeString('data'); // Sub-chunk 2 ID
             writeInt32(offset); // Sub-chunk 2 size (data size)
             
@@ -344,9 +531,7 @@
             return new Blob([wavHeader, processedAudio], { type: 'audio/wav' });
 
             function writeString(s) {
-                for (let i = 0; i < s.length; i++) {
-                    wavData.push(s.charCodeAt(i));
-                }
+                for (let i = 0; i < s.length; i++) { wavData.push(s.charCodeAt(i)); }
             }
             function writeInt16(i) {
                 wavData.push(i & 0xff);
@@ -362,17 +547,15 @@
 
         downloadButton.addEventListener('click', () => {
             if (!audioBuffer) {
-                updateStatus('No audio to download. Please upload and process a file.', 'error');
+                updateStatus('No audio to download. Please upload a file.', 'error');
                 return;
             }
 
-            stopAudio(false); // Stop playback before processing/downloading
-            updateStatus('Preparing audio for download... This may take a moment.', 'loading');
+            stopAudio(false); 
+            updateStatus('Preparing audio for download (Pitch/Speed shift only)...', 'loading');
 
             const rate = parseFloat(pitchSlider.value);
             
-            // Note: The bufferToWavBlob function is a simple *simulation* of the time-compressed/expanded data.
-            // For true high-quality processed audio, a full offline rendering of a complex DSP graph is required.
             try {
                 const wavBlob = bufferToWavBlob(audioBuffer, rate);
                 const url = URL.createObjectURL(wavBlob);
@@ -380,18 +563,24 @@
                 const a = document.createElement('a');
                 a.style.display = 'none';
                 a.href = url;
-                a.download = `processed_audio_${rate.toFixed(2)}x.wav`;
+                a.download = `processed_audio_${pitchValueSpan.textContent.replace(/\s+/g, '_')}.wav`;
                 document.body.appendChild(a);
                 a.click();
                 window.URL.revokeObjectURL(url);
                 document.body.removeChild(a);
 
-                updateStatus(`Download complete! Saved as processed_audio_${rate.toFixed(2)}x.wav`, 'success');
+                updateStatus(`Download complete! Saved as ${a.download}`, 'success');
             } catch (e) {
                 updateStatus(`Error during WAV conversion: ${e.message}`, 'error');
                 console.error("WAV conversion error:", e);
             }
         });
+        
+        // Initial setup calls
+        window.onload = () => {
+            updateDelayControls(); 
+            updateChorusControls();
+        };
 
     </script>
 </body>
