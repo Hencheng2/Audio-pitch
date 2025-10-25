@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Processor (Pitch & Speed Shift)</title>
+    <!-- Load Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for aesthetic */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fb;
+        }
+        .container-card {
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            max-width: 90%;
+        }
+        .pitch-label {
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div class="container-card w-full max-w-lg bg-white p-6 md:p-8 rounded-2xl space-y-6">
+
+        <h1 class="text-3xl font-extrabold text-indigo-700 text-center">
+            Pitch & Speed Shifter
+        </h1>
+        <p class="text-sm text-gray-500 text-center">
+            Upload an audio file (.mp3, .wav) to alter its pitch and speed simultaneously. (Note: True autotune requires complex external libraries, but this provides a strong, musical pitch shift effect.)
+        </p>
+
+        <!-- File Input -->
+        <div>
+            <label for="audioFile" class="block text-sm font-medium text-gray-700 mb-2">1. Upload Audio File</label>
+            <input type="file" id="audioFile" accept="audio/*" class="w-full text-sm text-gray-500
+                file:mr-4 file:py-2 file:px-4
+                file:rounded-full file:border-0
+                file:text-sm file:font-semibold
+                file:bg-indigo-50 file:text-indigo-700
+                hover:file:bg-indigo-100"
+            >
+        </div>
+
+        <!-- Pitch/Speed Control Slider -->
+        <div id="controlPanel" class="space-y-4 pt-4 border-t border-gray-100 hidden">
+            <h2 class="text-xl font-bold text-gray-800">2. Adjust Shift</h2>
+
+            <div class="flex justify-between items-center">
+                <label for="pitchSlider" class="text-sm font-medium text-gray-700">Pitch/Speed Shift</label>
+                <span id="pitchValue" class="pitch-label px-3 py-1 rounded-full text-sm font-semibold text-white bg-indigo-600">1.0x (Original)</span>
+            </div>
+
+            <input type="range" id="pitchSlider" min="0.5" max="2.0" value="1.0" step="0.01" class="w-full h-2 bg-indigo-100 rounded-lg appearance-none cursor-pointer range-lg">
+            <div class="flex justify-between text-xs text-gray-500 mt-1">
+                <span>0.5x (Deep/Slow)</span>
+                <span>2.0x (High/Fast)</span>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div id="buttonPanel" class="flex flex-col md:flex-row gap-4 pt-4 border-t border-gray-100 hidden">
+            <button id="playButton" disabled class="flex-1 px-4 py-3 bg-green-500 text-white font-semibold rounded-xl transition duration-150 hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed">
+                ▶ Play Processed
+            </button>
+            <button id="stopButton" disabled class="flex-1 px-4 py-3 bg-red-500 text-white font-semibold rounded-xl transition duration-150 hover:bg-red-600 disabled:bg-gray-300 disabled:cursor-not-allowed">
+                ■ Stop
+            </button>
+            <button id="downloadButton" disabled class="flex-1 px-4 py-3 bg-indigo-500 text-white font-semibold rounded-xl transition duration-150 hover:bg-indigo-600 disabled:bg-gray-300 disabled:cursor-not-allowed">
+                ↓ Download Audio
+            </button>
+        </div>
+
+        <!-- Status Message -->
+        <div id="statusMessage" class="text-center p-3 rounded-xl bg-gray-50 text-gray-700 text-sm mt-4">
+            Awaiting file upload...
+        </div>
+
+    </div>
+
+    <script>
+        // --- Core Web Audio API Variables ---
+        let audioContext = null;
+        let audioBuffer = null;
+        let audioSource = null;
+        let isPlaying = false;
+
+        // --- DOM Elements ---
+        const fileInput = document.getElementById('audioFile');
+        const controlPanel = document.getElementById('controlPanel');
+        const buttonPanel = document.getElementById('buttonPanel');
+        const pitchSlider = document.getElementById('pitchSlider');
+        const pitchValueSpan = document.getElementById('pitchValue');
+        const playButton = document.getElementById('playButton');
+        const stopButton = document.getElementById('stopButton');
+        const downloadButton = document.getElementById('downloadButton');
+        const statusMessage = document.getElementById('statusMessage');
+
+        /**
+         * Utility function to update the status message box.
+         * @param {string} message - The text message to display.
+         * @param {string} type - 'info', 'success', or 'error' for styling.
+         */
+        function updateStatus(message, type = 'info') {
+            statusMessage.textContent = message;
+            statusMessage.className = 'text-center p-3 rounded-xl mt-4 text-sm';
+            switch (type) {
+                case 'success':
+                    statusMessage.classList.add('bg-green-100', 'text-green-800');
+                    break;
+                case 'error':
+                    statusMessage.classList.add('bg-red-100', 'text-red-800');
+                    break;
+                case 'loading':
+                    statusMessage.classList.add('bg-yellow-100', 'text-yellow-800');
+                    break;
+                default:
+                    statusMessage.classList.add('bg-gray-50', 'text-gray-700');
+            }
+        }
+
+        // --- Initialization and File Loading ---
+
+        fileInput.addEventListener('change', async (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Ensure AudioContext is ready (it must be created after a user gesture on some browsers)
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+
+            updateStatus('Loading and decoding audio...', 'loading');
+            controlPanel.classList.add('hidden');
+            buttonPanel.classList.add('hidden');
+            playButton.disabled = true;
+
+            try {
+                // Read the file into an ArrayBuffer
+                const arrayBuffer = await file.arrayBuffer();
+
+                // Decode the audio data
+                audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+                updateStatus(`File "${file.name}" loaded successfully. Adjust the shift.`, 'success');
+                playButton.disabled = false;
+                downloadButton.disabled = false;
+                controlPanel.classList.remove('hidden');
+                buttonPanel.classList.remove('hidden');
+
+            } catch (e) {
+                updateStatus(`Error decoding audio: ${e.message}. Please try a different file.`, 'error');
+                console.error("Audio decoding error:", e);
+                audioBuffer = null;
+                fileInput.value = '';
+                playButton.disabled = true;
+                downloadButton.disabled = true;
+            }
+        });
+
+        // --- Playback Logic ---
+
+        /**
+         * Creates and connects the AudioBufferSourceNode with the current pitch setting.
+         */
+        function createAndStartSource() {
+            if (!audioBuffer) return;
+
+            // Stop any existing source
+            stopAudio();
+
+            // Create a new source node
+            audioSource = audioContext.createBufferSource();
+            audioSource.buffer = audioBuffer;
+            
+            // Get the current playback rate from the slider
+            const rate = parseFloat(pitchSlider.value);
+            
+            // Apply the 'autotune' (pitch/speed shift) effect via playbackRate
+            // NOTE: Changing playbackRate changes BOTH pitch and speed. 
+            // This is a simplification of a true pitch shift algorithm.
+            audioSource.playbackRate.value = rate;
+
+            // Connect the source to the audio context's destination (speakers)
+            audioSource.connect(audioContext.destination);
+
+            // Start playing from the beginning
+            audioSource.start(0);
+
+            isPlaying = true;
+            playButton.textContent = '⏸ Pause';
+            playButton.classList.remove('bg-green-500', 'hover:bg-green-600');
+            playButton.classList.add('bg-orange-500', 'hover:bg-orange-600');
+            stopButton.disabled = false;
+
+            // Event listener for when the audio finishes playing
+            audioSource.onended = () => {
+                // Check if the source ended naturally (not by stopAudio)
+                if (isPlaying) {
+                    stopAudio(false); // Clean up without resetting state aggressively
+                    playButton.textContent = '▶ Play Processed';
+                    playButton.classList.add('bg-green-500', 'hover:bg-green-600');
+                    playButton.classList.remove('bg-orange-500', 'hover:bg-orange-600');
+                    stopButton.disabled = true;
+                }
+            };
+
+            updateStatus(`Playing at ${rate.toFixed(2)}x rate.`, 'info');
+        }
+
+        /**
+         * Stops the currently playing audio source.
+         * @param {boolean} resetControls - If true, resets button states.
+         */
+        function stopAudio(resetControls = true) {
+            if (audioSource && isPlaying) {
+                try {
+                    audioSource.stop();
+                } catch (e) {
+                    // console.warn("Error stopping audio source, may already be stopped:", e);
+                }
+            }
+            if (resetControls) {
+                isPlaying = false;
+                playButton.textContent = '▶ Play Processed';
+                playButton.classList.add('bg-green-500', 'hover:bg-green-600');
+                playButton.classList.remove('bg-orange-500', 'hover:bg-orange-600');
+                stopButton.disabled = true;
+                if (audioBuffer) {
+                   updateStatus(`Playback stopped. Adjust the shift.`, 'info');
+                }
+            }
+        }
+
+        playButton.addEventListener('click', () => {
+            if (!audioBuffer) {
+                updateStatus('Please upload an audio file first.', 'error');
+                return;
+            }
+            // Resume context on play (required for some browser policies)
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+
+            if (isPlaying) {
+                stopAudio();
+            } else {
+                createAndStartSource();
+            }
+        });
+
+        stopButton.addEventListener('click', () => {
+            stopAudio();
+        });
+
+        // --- Slider and UI Logic ---
+
+        pitchSlider.addEventListener('input', (event) => {
+            const rate = parseFloat(event.target.value);
+            pitchValueSpan.textContent = `${rate.toFixed(2)}x (${rate < 1.0 ? 'Lower' : (rate > 1.0 ? 'Higher' : 'Original')})`;
+            
+            // Change color based on value
+            if (rate > 1.1) {
+                pitchValueSpan.classList.remove('bg-indigo-600', 'bg-blue-600');
+                pitchValueSpan.classList.add('bg-pink-600');
+            } else if (rate < 0.9) {
+                pitchValueSpan.classList.remove('bg-indigo-600', 'bg-pink-600');
+                pitchValueSpan.classList.add('bg-blue-600');
+            } else {
+                pitchValueSpan.classList.remove('bg-pink-600', 'bg-blue-600');
+                pitchValueSpan.classList.add('bg-indigo-600');
+            }
+
+            // If audio is currently playing, instantly apply the new rate
+            if (audioSource && isPlaying) {
+                 audioSource.playbackRate.setValueAtTime(rate, audioContext.currentTime);
+            }
+        });
+
+        // --- Download Logic ---
+
+        /**
+         * Converts the AudioBuffer into a downloadable WAV file blob.
+         * @param {AudioBuffer} audioBuffer - The processed audio data.
+         * @param {number} rate - The playback rate applied.
+         * @returns {Blob} The WAV file Blob.
+         */
+        function bufferToWavBlob(audioBuffer, rate) {
+            const numberOfChannels = audioBuffer.numberOfChannels;
+            const sampleRate = audioBuffer.sampleRate;
+            
+            // Calculate total number of samples *at the new speed*
+            const originalLength = audioBuffer.length;
+            const processedLength = Math.ceil(originalLength / rate);
+            
+            // Create a temporary buffer to hold the resampled data (using simple decimation/interpolation)
+            // Note: This simple method will introduce artifacts, but it's required to simulate 
+            // the length change caused by playbackRate for the download.
+            const newArrayBuffer = new ArrayBuffer(processedLength * 2 * numberOfChannels);
+            const dataView = new DataView(newArrayBuffer);
+
+            let offset = 0;
+            for (let i = 0; i < processedLength; i++) {
+                // Determine the original sample index corresponding to the processed index
+                // This is a simple interpolation/decimation based on the rate.
+                const originalIndex = Math.floor(i * rate); 
+                
+                for (let channel = 0; channel < numberOfChannels; channel++) {
+                    const sampleValue = audioBuffer.getChannelData(channel)[originalIndex] * 32767;
+                    // Write 16-bit PCM (signed short)
+                    dataView.setInt16(offset, sampleValue, true); 
+                    offset += 2;
+                }
+            }
+
+            // Now, build the WAV file header (44 bytes)
+            const wavData = [];
+
+            // 1. RIFF chunk
+            writeString('RIFF'); // Chunk ID
+            writeInt32(36 + offset); // Chunk size (File size - 8)
+            writeString('WAVE'); // Format
+
+            // 2. FMT chunk
+            writeString('fmt '); // Sub-chunk 1 ID
+            writeInt32(16); // Sub-chunk 1 size (16 for PCM)
+            writeInt16(1); // Audio format (1 for PCM)
+            writeInt16(numberOfChannels); // Number of channels
+            writeInt32(sampleRate); // Sample rate
+            writeInt32(sampleRate * numberOfChannels * 2); // Byte rate (SampleRate * NumChannels * BitsPerSample/8)
+            writeInt16(numberOfChannels * 2); // Block align (NumChannels * BitsPerSample/8)
+            writeInt16(16); // Bits per sample (16)
+
+            // 3. DATA chunk
+            writeString('data'); // Sub-chunk 2 ID
+            writeInt32(offset); // Sub-chunk 2 size (data size)
+            
+            // Prepend the header to the audio data
+            const wavHeader = new Blob(wavData, { type: 'audio/wav' });
+            const processedAudio = new Blob([new Uint8Array(newArrayBuffer)], { type: 'audio/wav' });
+
+            return new Blob([wavHeader, processedAudio], { type: 'audio/wav' });
+
+            function writeString(s) {
+                for (let i = 0; i < s.length; i++) {
+                    wavData.push(s.charCodeAt(i));
+                }
+            }
+            function writeInt16(i) {
+                wavData.push(i & 0xff);
+                wavData.push((i >> 8) & 0xff);
+            }
+            function writeInt32(i) {
+                wavData.push(i & 0xff);
+                wavData.push((i >> 8) & 0xff);
+                wavData.push((i >> 16) & 0xff);
+                wavData.push((i >> 24) & 0xff);
+            }
+        }
+
+        downloadButton.addEventListener('click', () => {
+            if (!audioBuffer) {
+                updateStatus('No audio to download. Please upload and process a file.', 'error');
+                return;
+            }
+
+            stopAudio(false); // Stop playback before processing/downloading
+            updateStatus('Preparing audio for download... This may take a moment.', 'loading');
+
+            const rate = parseFloat(pitchSlider.value);
+            
+            // Note: The bufferToWavBlob function is a simple *simulation* of the time-compressed/expanded data.
+            // For true high-quality processed audio, a full offline rendering of a complex DSP graph is required.
+            try {
+                const wavBlob = bufferToWavBlob(audioBuffer, rate);
+                const url = URL.createObjectURL(wavBlob);
+                
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = `processed_audio_${rate.toFixed(2)}x.wav`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+                updateStatus(`Download complete! Saved as processed_audio_${rate.toFixed(2)}x.wav`, 'success');
+            } catch (e) {
+                updateStatus(`Error during WAV conversion: ${e.message}`, 'error');
+                console.error("WAV conversion error:", e);
+            }
+        });
+
+    </script>
+</body>
+</html>
+
